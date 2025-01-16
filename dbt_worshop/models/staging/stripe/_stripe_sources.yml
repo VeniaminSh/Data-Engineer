@@ -1,0 +1,8 @@
+version: 2
+
+sources:
+  - name: stripe
+    database: PostgreSQL-1718
+    schema: stripe
+    tables:
+      - name: payment
