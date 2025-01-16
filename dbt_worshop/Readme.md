@@ -306,14 +306,23 @@ repos:
         files: ^(models|analyses|tests)/.*.sql$
 ```
 
-далее предустановить надстройку
+далее предустановить надстройку - Активировать предварительную фиксацию
 ```
 pre-commit install
 ```
 Далее добавим и закомитим все файлы (не пушить)
 
 
-16. Создадим шаблон для pull request
+16. Создадим фактическую ветку для разработки (обычно она начинается раньше всего остального)
+```
+git checkout -b feature/new-dbt-model
+
+git add .
+git commit -m "Adding initial models"
+```
+
+
+17. Создадим шаблон для pull request
 
 Для этого создадим папку .github и добавим в нее файл pull_request_template.md
 
@@ -345,4 +354,72 @@ pre-commit install
 - [ ] Project has been tested locally
 - [ ] Each model has YAML file with model description, tests
 - [ ] dbt CI pass
+```
+ и сделаем
+
+```
+git add .
+git commit -m "Adding initial models"
+```
+
+код нам выдаст ссылку , по которой можно пройти посмотреть на мерж реквест
+
+
+18. Можно настроить гит хаб так, чтоб он самостоятельно проверял как изменились файлы?
+
+Для этого необходимо создать папку dbt_worshop\.github\workflow и там созадать файл pre-commit.yml ямл для гит хаб экшенс
+
+и добавть туда код (каждый раз когда делается push будет запускаться джоба pre-commit) будет запускаться на убунту
+```
+name: Run Pre-commit Hooks
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+
+    steps:  #копирует код с репы на контейнер
+      # Checkout the code and fetch all branches
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Ensure the full history is fetched, not just the last commit
+
+      # Set up Python environment
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: 3.11
+
+      # Install dependencies далее устанавливает все депенденсы
+      - name: Install dependencies
+        run: |
+          python -m venv venv
+          . venv/bin/activate
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pre-commit install --install-hooks
+
+      # Fetch the main branch to ensure it's available for comparison
+      - name: Fetch main branch
+        run: git fetch origin main
+
+      # Run pre-commit on all files changed between the current branch and main
+      - name: Run pre-commit on all changed files
+        run: |
+          . venv/bin/activate
+          # Get the list of files changed between the current branch and main
+          files=$(git diff --name-only origin/main)
+          if [ -n "$files" ]; then
+            pre-commit run --files $files
+          else
+            echo "No modified files to check."
+          fi
 ```
